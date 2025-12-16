@@ -1,7 +1,7 @@
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from spark_order import spark
+from .spark_order import spark
 import os
 
 def visualize_results(final_parquet_path, diagram_path = './data/diagram/', spark_session = spark):
@@ -93,6 +93,8 @@ def visualize_results(final_parquet_path, diagram_path = './data/diagram/', spar
     html_path_3 = diagram_path + "viz_3_daily_return_histogram.html"
     fig3.write_html(html_path_3)
     print(f"图表3 (收益率分布) 已保存至: {html_path_3}")
+
+    spark.stop()
 
 if __name__ == '__main__':
     final_data = "./data/final_high_vol_features"

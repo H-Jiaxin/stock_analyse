@@ -3,24 +3,27 @@ import pandas as pd
 import json
 import time
 import random
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def generate_random_headers(url):
-        user_agent_list = [
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36',
-            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0',
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/99.0.1150.36',
-        ]
+    user_agent_list = [
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.75 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/99.0.1150.36',
+    ]
 
-        return {
-            'User-Agent': random.choice(user_agent_list),
-            'content-type': 'application/javascript; charset=UTF-8',
-            'Connection': 'keep-alive',
-            'Referer': url
-        }
+    return {
+        'User-Agent': random.choice(user_agent_list),
+        'content-type': 'application/javascript; charset=UTF-8',
+        'Connection': 'keep-alive',
+        'Referer': url
+    }
 
 
 class spiderTool:
-    def get_stock_kline_data(stock_code, market_code, limit):
+
+    @staticmethod
+    def _get_stock_kline_data(stock_code, market_code, limit):
         """
         使用东方财富历史K线接口获取股票数据。
 
@@ -77,8 +80,19 @@ class spiderTool:
         except Exception as e:
             print(f"数据解析失败: {e}")
             return pd.DataFrame()
-        
-    def get_stock_code_list(page_size=50, fn='f9', po = 0):
+
+    @staticmethod
+    def _fetch_one_stock(code, length):
+        try:
+            df = spiderTool._get_stock_kline_data(code, '1', length)
+            return df
+        except Exception as e:
+            print(f"{code} failed: {e}")
+            return None
+
+
+    @staticmethod
+    def _get_stockcode_page(pn = 1, page_size=100, fn='f9', po = 0):
         """
         请求东方财富的股票列表接口，获取指定数量的涨幅榜股票。
 
@@ -104,7 +118,7 @@ class spiderTool:
             'fs': 'm:1+t:23+f:!2', 
             'fields': 'f12,f14,f3,f2,f152,f5,f6,f7,f15,f18,f16,f17,f10,f8,f9,f23',
             'fid': fn,
-            'pn': 1,
+            'pn': pn,
             'pz': page_size, # 设置页大小
             'po': po,        # 排序方式
             'dect': 1,
@@ -143,28 +157,64 @@ class spiderTool:
         return []
 
 
+    @staticmethod
     def get_stock_data(data_path, stock_codes, length = 1000):
         all_data = []
         for code in stock_codes:
-            print(f"get {code} data...   ", end="")
-            df = spiderTool.get_stock_kline_data(code, '1', length)
-            if not df.empty:
-                print(f"successfully got {len(df)} records.")
-                all_data.append(df)
-            else:
-                print(f"some thing wrong when getting {code} data.")
-            time.sleep(random.uniform(1, 3)) 
+            spiderTool._fetch_one_stock(code, length)
         result = pd.concat(all_data, ignore_index=True)
         result.to_csv(data_path, index=False, encoding='utf-8-sig')
         # result.to_parquet(data_path, index=False)
         print("*** All data saved. total records: ", len(result), " ***")
 
 
+    # 新增多线程
+    @staticmethod
+    def get_stock_data_concurrent(data_path, stock_codes, length=1000, max_workers=5):
+
+        all_data = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_map = {
+                executor.submit(spiderTool._fetch_one_stock, code, length): code
+                for code in stock_codes
+            }
+
+            for future in as_completed(future_map):
+                code = future_map[future]
+                df = future.result()
+
+                if df is not None and not df.empty:
+                    print(f"{code} done, {len(df)} records")
+                    all_data.append(df)
+                else:
+                    print(f"{code} failed or empty")
+
+        if not all_data:
+            print("No data fetched.")
+            return
+
+        result = pd.concat(all_data, ignore_index=True)
+        result.to_csv(data_path, index=False, encoding='utf-8-sig')
+        print(f"*** All data saved: {len(result)} records ***")
+
+    @staticmethod
+    def get_tscode_list(size = 100, fn='f9', po = 0):
+        page = size // 100
+        list = []
+        for i in range(1, page+1):
+            list = list+spiderTool._get_stockcode_page(pn=i, page_size=100, fn=fn, po=po)
+        left = size - 100 * page
+        if left != 0:
+            list+spiderTool._get_stockcode_page(pn=page + 1, page_size=left, fn=fn, po=po)
+        return list
+
+
+
 # test
 if __name__ == '__main__':
-    ls = spiderTool.get_stock_code_list(page_size=10)
-    print("获取到的股票代码列表:", ls)
-    df = spiderTool.get_stock_kline_data(ls[0], '1', limit=10)
+    ls = spiderTool.get_tscode_list(size = 200)
+    print("获取到的股票代码列表:", ls, "length", len(ls))
+    df = spiderTool._get_stock_kline_data(ls[0], '1', limit=10)
     if not df.empty:
         print("数据前20行:")
         print(df.head(20))

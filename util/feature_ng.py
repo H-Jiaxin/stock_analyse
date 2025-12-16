@@ -1,9 +1,6 @@
-import sys
-from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, avg, lag, stddev, desc
 from pyspark.sql.window import Window
-from pyspark.sql.types import DoubleType, StringType
-from spark_order import spark
+from .spark_order import spark
 
 # 假设 Spark Session 已经在主程序中初始化
 
@@ -85,7 +82,7 @@ def feature_engneer(cleaned_data_path, target_count=10, final_output_path="./dat
 
 if __name__ == '__main__':
     data = './data/cleaned_stock_data'
-    analysis_df = feature_engneer(data, 100)
+    analysis_df = feature_engneer(data, 200)
     print("scheme detail:")
     analysis_df.printSchema()
     spark.stop()

@@ -2,7 +2,7 @@ import sys
 from pyspark.sql.functions import col, sum, when, last
 from pyspark.sql.window import Window
 from pyspark.sql.types import DoubleType, DateType, StringType
-from spark_order import spark
+from .spark_order import spark
 
 # 超过阈值说明偏差较大，数据可信度不高
 PRICE_FILL_THRESHOLD_PCT = 5.0  

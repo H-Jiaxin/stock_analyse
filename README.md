@@ -1,6 +1,6 @@
 # a small project for data analyse
 
-requirement:
+### requirement:
 
 ```
 certifi==2025.11.12
@@ -22,16 +22,21 @@ tzdata==2025.2
 urllib3==2.2.3
 ```
 
-python version 3.8
+python version 3.8  
+linux os(ubuntu24.04 is development env)
 
+### attention:  
 
+check the website [eastmoney](https://www.eastmoney.com/robots.txt)'s robots.txt is ok for web spider  
+in 2025-12-16 is ok  
+![robot.txt](img/robot.txt-2025-12-16.png)
 
-
-
-usage:
+### usage:
 
 open project and run `pip install -r requirement.txt` in terminal to install moudule  
 
-just run python main.py
+just run python main.py  
+
+in data/diagram will generate three html, use browser open it
 
 
