@@ -12,7 +12,10 @@ if __name__ == '__main__':
     spiderTool.get_stock_data_concurrent(data_path, stock_codes)
     # spiderTool.get_stock_data(data_path, stock_codes)
 
-    # 数据加载与清洗
+    # 数据展示
+    visualize.eda_visualization(data_path)
+
+    # 数据清洗
     dataClean.clean_stock_data(data_path, output=cleaned_data)
 
     # 特征工程
